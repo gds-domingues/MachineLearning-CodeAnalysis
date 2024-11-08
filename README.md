@@ -1,94 +1,94 @@
 # Vulnerability Detection in Code Using Machine Learning
 
-Este projeto utiliza aprendizado de máquina para detectar vulnerabilidades em exemplos de código. Com uma combinação de redes neurais convolucionais (CNN) e redes LSTM, o modelo analisa descrições e exemplos de código para identificar padrões associados a vulnerabilidades comuns.
+This project uses machine learning to detect vulnerabilities in code samples. With a combination of Convolutional Neural Networks (CNN) and LSTM networks, the model analyzes descriptions and code examples to identify patterns associated with common vulnerabilities.
 
-## Objetivo
+## Objective
 
-O objetivo é fornecer uma ferramenta que auxilie na análise de segurança de códigos, detectando automaticamente potenciais vulnerabilidades. Este projeto pode ser aplicado a uma variedade de linguagens de programação e tipos de vulnerabilidade, sendo especialmente útil para desenvolvedores e analistas de segurança.
+The goal is to provide a tool that assists in code security analysis by automatically detecting potential vulnerabilities. This project can be applied to a variety of programming languages and vulnerability types, making it especially useful for developers and security analysts.
 
-## Estrutura do Projeto
+## Project Structure
 
 ```
 vulnhub/
 ├── data/
-│   ├── files_exploits.csv          # Dados de exploits do Exploit-DB
-│   ├── files_shellcodes.csv         # Dados de shellcodes do Exploit-DB
-│   └── nvdcve-1.1-2024.json         # Arquivo JSON da CVE para treinamento
+│   ├── files_exploits.csv          # Exploit data from Exploit-DB
+│   ├── files_shellcodes.csv         # Shellcode data from Exploit-DB
+│   └── nvdcve-1.1-2024.json         # CVE JSON file for training
 ├── models/
-│   ├── model_cnn_lstm.h5            # Arquivo do modelo treinado
-│   └── tokenizer.pkl                # Tokenizer para preprocessamento de texto
+│   ├── model_cnn_lstm.h5            # Trained model file
+│   └── tokenizer.pkl                # Tokenizer for text preprocessing
 ├── vuln-codes/
-│   ├── buffer-overflow.c            # Exemplo de código vulnerável para teste
-│   └── safe_code.py                 # Exemplo de código seguro para teste
+│   ├── buffer-overflow.c            # Vulnerable code example for testing
+│   └── safe_code.py                 # Safe code example for testing
 ├── src/
-│   ├── preprocess.py                # Script para preprocessamento dos dados
-│   ├── train.py                     # Script para treinamento do modelo
-│   └── predict.py                   # Script para predição em novos códigos
-└── README.md                        # Descrição do projeto (este arquivo)
+│   ├── preprocess.py                # Script for data preprocessing
+│   ├── train.py                     # Script for model training
+│   └── predict.py                   # Script for prediction on new code
+└── README.md                        # Project description (this file)
 ```
 
-## Configuração do Ambiente
+## Environment Setup
 
-### Pré-requisitos
+### Prerequisites
 
 - **Python 3.8+**
-- **Bibliotecas Python**:
+- **Python Libraries**:
   - TensorFlow
   - Pandas
   - NumPy
   - Scikit-learn
   - h5py
 
-### Instalando as Dependências
+### Installing Dependencies
 
-Para instalar as dependências, crie e ative um ambiente virtual e, em seguida, instale os pacotes listados em `requirements.txt`:
+To install dependencies, create and activate a virtual environment and then install the packages listed in `requirements.txt`:
 
 ```bash
 python -m venv venv
-source venv/bin/activate  # No Windows, use `venv\Scripts\activate`
+source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
 pip install -r requirements.txt
 ```
 
-## Uso do Projeto
+## Project Usage
 
-### 1. Pré-processamento dos Dados
+### 1. Data Preprocessing
 
-O script `preprocess.py` processa os dados dos arquivos `files_exploits.csv`, `files_shellcodes.csv` e `nvdcve-1.1-2024.json`. Ele tokeniza as descrições e os exemplos de código, preparando-os para o treinamento do modelo.
+The `preprocess.py` script processes data from the `files_exploits.csv`, `files_shellcodes.csv`, and `nvdcve-1.1-2024.json` files. It tokenizes the descriptions and code examples, preparing them for model training.
 
 ```bash
 python src/preprocess.py
 ```
 
-### 2. Treinamento do Modelo
+### 2. Model Training
 
-Após o preprocessamento, o script `train.py` treina o modelo CNN + LSTM usando os dados tokenizados.
+After preprocessing, the `train.py` script trains the CNN + LSTM model using the tokenized data.
 
 ```bash
 python src/train.py
 ```
 
-Isso irá salvar o modelo treinado em `models/model_cnn_lstm.h5`.
+This will save the trained model in `models/model_cnn_lstm.h5`.
 
-### 3. Predição em Novos Exemplos de Código
+### 3. Prediction on New Code Examples
 
-Para usar o modelo treinado em novos exemplos de código, execute `predict.py` passando o caminho para o arquivo de código como argumento.
+To use the trained model on new code examples, run `predict.py`, passing the path to the code file as an argument.
 
 ```bash
 python src/predict.py vuln-codes/safe_code.py
 ```
 
-O script analisará o código e indicará se ele é "Provavelmente vulnerável" ou "Provavelmente seguro" com base nos padrões aprendidos durante o treinamento.
+The script will analyze the code and indicate whether it is "Probably Vulnerable" or "Probably Safe" based on the patterns learned during training.
 
-## Exemplo de Código Não Vulnerável para Teste
+## Example of Non-Vulnerable Code for Testing
 
-Aqui está um exemplo de código seguro em Python que pode ser usado para teste com o modelo:
+Here is an example of safe Python code that can be used for testing with the model:
 
 ```python
 def greet_user(username):
     if username.isalnum():
-        print(f"Olá, {username}!")
+        print(f"Hello, {username}!")
     else:
-        print("Nome de usuário inválido.")
+        print("Invalid username.")
 
 def calculate_sum(a, b):
     return a + b
@@ -96,18 +96,18 @@ def calculate_sum(a, b):
 def main():
     greet_user("Alice123")
     result = calculate_sum(10, 20)
-    print(f"Resultado da soma: {result}")
+    print(f"Sum result: {result}")
 
 if __name__ == "__main__":
     main()
 ```
 
-Salve este código como `safe_code.py` e use o comando de predição para testá-lo:
+Save this code as `safe_code.py` and use the prediction command to test it:
 
 ```bash
 python src/predict.py vuln-codes/safe_code.py
 ```
 
-## Conclusão
+## Conclusion
 
-Esse projeto fornece uma estrutura de machine learning para análise de vulnerabilidades em código. Ao incorporar dados de CVEs e exemplos de exploits, ele se torna uma ferramenta poderosa para auxiliar desenvolvedores e analistas de segurança na identificação de possíveis falhas de segurança em trechos de código.
+This project provides a machine learning framework for vulnerability analysis in code. By incorporating CVE data and exploit examples, it becomes a powerful tool to help developers and security analysts identify potential security flaws in code snippets.
