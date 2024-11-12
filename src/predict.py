@@ -1,74 +1,39 @@
-import tensorflow as tf
+import os
 import pickle
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-import sys
-import os
+from tensorflow.keras.models import load_model
+import numpy as np
+import json
 
-# Função para carregar o modelo com verificações de erro
-def load_model_safe(model_path):
-    try:
-        print(f"Tentando carregar o modelo do caminho: {model_path}")
-        model = tf.keras.models.load_model(model_path)
-        print("Modelo carregado com sucesso.")
-        return model
-    except FileNotFoundError:
-        print(f"Erro: O modelo não foi encontrado no caminho '{model_path}'.")
-        sys.exit(1)
-    except Exception as e:
-        print(f"Erro ao carregar o modelo: {e}")
-        sys.exit(1)
+# Carregar modelo e tokenizer
+model_path = os.path.join("models", "model_cnn_lstm.h5")
+tokenizer_path = os.path.join("models", "tokenizer.pkl")
 
-# Função para carregar o tokenizer com verificações de erro
-def load_tokenizer_safe(tokenizer_path):
-    try:
-        print(f"Tentando carregar o tokenizer do caminho: {tokenizer_path}")
-        with open(tokenizer_path, "rb") as f:
-            tokenizer = pickle.load(f)
-        print("Tokenizer carregado com sucesso.")
-        return tokenizer
-    except FileNotFoundError:
-        print(f"Erro: O tokenizer não foi encontrado no caminho '{tokenizer_path}'.")
-        sys.exit(1)
-    except Exception as e:
-        print(f"Erro ao carregar o tokenizer: {e}")
-        sys.exit(1)
+print(f"Tentando carregar o modelo do caminho: {model_path}")
+model = load_model(model_path)
+print("Modelo carregado com sucesso.")
 
-# Caminhos corrigidos para apontar para a pasta 'models' no diretório principal
-model_path = os.path.abspath("../models/model_cnn_lstm.h5")
-tokenizer_path = os.path.abspath("../models/tokenizer.pkl")
-model = load_model_safe(model_path)
-tokenizer = load_tokenizer_safe(tokenizer_path)
+print(f"Tentando carregar o tokenizer do caminho: {tokenizer_path}")
+with open(tokenizer_path, "rb") as f:
+    tokenizer = pickle.load(f)
+print("Tokenizer carregado com sucesso.")
 
-def preprocess_code_snippet(code_snippet, max_len=200):
-    sequence = tokenizer.texts_to_sequences([code_snippet])
-    padded_sequence = pad_sequences(sequence, maxlen=max_len, padding='post')
-    return padded_sequence
+# Função para processar e prever código com threshold ajustado
+def analyze_code_snippet(code_snippet, threshold=0.6):  # Defina o threshold
+    # Tokenizar e processar o código
+    sequence = tokenizer.texts_to_sequences([code_snippet])[0]
+    sequence = [idx if idx < tokenizer.num_words else 1 for idx in sequence]  # Substitui OOV
+    padded_sequence = pad_sequences([sequence], maxlen=200, padding='post')
 
-def analyze_code_snippet(code_snippet):
-    processed_code = preprocess_code_snippet(code_snippet)
-    prediction = model.predict(processed_code)
-    return "Provavelmente vulnerável" if prediction[0][0] > 0.5 else "Provavelmente seguro"
+    # Fazer a predição com threshold personalizado
+    prediction = model.predict(padded_sequence)
+    return "Vulnerável" if prediction >= threshold else "Seguro"
 
-def read_code_from_file(file_path):
-    try:
-        with open(file_path, "r", encoding="utf-8") as file:
-            return file.read()
-    except FileNotFoundError:
-        print(f"Erro: O arquivo '{file_path}' não foi encontrado.")
-        sys.exit(1)
-    except Exception as e:
-        print(f"Erro ao ler o arquivo: {e}")
-        sys.exit(1)
+# Carregar e analisar o código de teste a partir da database compilada
+with open("data/compiled_exploits.json", "r", encoding="utf-8") as f:
+    exploit_data = json.load(f)
+    code = exploit_data[0]["code"]  # Analisa o primeiro código como exemplo
 
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Uso: python predict.py <caminho_para_o_arquivo_de_codigo>")
-        sys.exit(1)
-
-    # Lê o arquivo de código fornecido como argumento
-    file_path = sys.argv[1]
-    code = read_code_from_file(file_path)
-
-    # Analisa o código e exibe o resultado
-    result = analyze_code_snippet(code)
-    print(f"Resultado da análise: {result}")
+# Realizar a análise
+result = analyze_code_snippet(code)
+print(f"Resultado da análise: {result}")

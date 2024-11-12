@@ -5,73 +5,61 @@ from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 import pickle
 
-# Caminho dos arquivos
-exploit_file = "data/files_exploits.csv"
-shellcode_file = "data/files_shellcodes.csv"
-cve_json_file = "data/nvdcve-1.1-2024.json"
+# Caminho do diretório base
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
-# Função para carregar e combinar dados dos CSVs de exploits e shellcodes
-def load_csv_data():
-    exploits_df = pd.read_csv(exploit_file)
-    shellcodes_df = pd.read_csv(shellcode_file)
-    
-    combined_df = pd.concat([
-        exploits_df[['description', 'platform', 'file']],
-        shellcodes_df[['description', 'platform', 'file']]
-    ], ignore_index=True)
-    
-    return combined_df
+# Caminhos absolutos para os arquivos
+exploit_json_file = os.path.join(BASE_DIR, "data/compiled_exploits.json")  # Novo arquivo de exploits
+safe_code_file = os.path.join(BASE_DIR, "data/safe_code_examples.json")
 
-# Função para carregar o conteúdo de arquivos CSV com vulnerabilidades
-def load_code_snippet(row):
-    file_path = os.path.join("exploitdb", row["file"])  # Verifique se o caminho está correto
-    try:
-        with open(file_path, "r", encoding="utf-8", errors="ignore") as file:
-            return file.read()
-    except FileNotFoundError:
-        return "Arquivo não encontrado."
-
-# Função para carregar e extrair dados do JSON de CVE
-def load_cve_data():
-    with open(cve_json_file, "r", encoding="utf-8") as f:
-        cve_data = json.load(f)
+# Função para carregar e processar o novo arquivo JSON dos exploits
+def load_exploit_data():
+    with open(exploit_json_file, "r", encoding="utf-8") as f:
+        exploit_data = json.load(f)
     
-    cve_records = []
-    for item in cve_data['CVE_Items']:
-        description = item['cve']['description']['description_data'][0]['value']
-        cve_records.append({
+    exploit_records = []
+    for item in exploit_data:
+        description = item.get("code", "")  # Pega o código do exploit
+        exploit_records.append({
             "description": description,
-            "platform": "general",  # Pode ser ajustado se tiver detalhes específicos
-            "file": None  # Não há arquivos associados aos dados CVE
+            "label": "vulnerável"
         })
-    return pd.DataFrame(cve_records)
+    return pd.DataFrame(exploit_records)
 
-# Pré-processar os dados de exploits, shellcodes e CVE
+# Função para carregar exemplos de código seguro do JSON
+def load_safe_examples():
+    with open(safe_code_file, "r", encoding="utf-8") as f:
+        safe_data = json.load(f)
+    safe_df = pd.DataFrame(safe_data)
+    return safe_df
+
+# Função principal de pré-processamento e tokenização
 def preprocess_and_tokenize(max_len=200, vocab_size=10000):
-    # Carregar dados dos arquivos CSV e JSON de CVE
-    csv_data = load_csv_data()
-    cve_data = load_cve_data()
+    # Carregar dados vulneráveis e seguros
+    exploit_data = load_exploit_data()  # Carrega a nova database de exploits
+    safe_data = load_safe_examples()
     
-    # Extrair conteúdo dos exploits e shellcodes
-    csv_data["code_snippet"] = csv_data.apply(load_code_snippet, axis=1)
+    # Combina dados de vulnerabilidades e exemplos seguros
+    combined_df = pd.concat([exploit_data[['description', 'label']], safe_data[['description', 'label']]], ignore_index=True)
     
-    # Combinar todos os dados
-    combined_df = pd.concat([csv_data[['description', 'code_snippet']], cve_data[['description']]], ignore_index=True)
-    combined_df['label'] = "vulnerável"  # Definimos todas as descrições como vulneráveis
-    
-    # Tokenizar os textos
+    # Balanceamento de dados: iguala a quantidade de exemplos vulneráveis e seguros
+    vulnerable_samples = combined_df[combined_df['label'] == "vulnerável"]
+    safe_samples = combined_df[combined_df['label'] == "seguro"].sample(len(vulnerable_samples), replace=True)
+    balanced_df = pd.concat([vulnerable_samples, safe_samples])
+
+    # Tokenização dos textos
     tokenizer = Tokenizer(num_words=vocab_size, oov_token="<OOV>")
-    tokenizer.fit_on_texts(combined_df["description"])
-
-    # Transformar as descrições em sequências
-    sequences = tokenizer.texts_to_sequences(combined_df["description"])
+    tokenizer.fit_on_texts(balanced_df["description"])
+    
+    sequences = tokenizer.texts_to_sequences(balanced_df["description"])
     padded_sequences = pad_sequences(sequences, maxlen=max_len, padding='post')
-
-    # Salvar o tokenizer para uso futuro
-    with open("models/tokenizer.pkl", "wb") as f:
+    
+    # Salvar o tokenizer para uso posterior
+    tokenizer_path = os.path.join(BASE_DIR, "models/tokenizer.pkl")
+    with open(tokenizer_path, "wb") as f:
         pickle.dump(tokenizer, f)
 
-    return padded_sequences, combined_df["label"]
+    return padded_sequences, balanced_df["label"]
 
 if __name__ == "__main__":
     sequences, labels = preprocess_and_tokenize()
